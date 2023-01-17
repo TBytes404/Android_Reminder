@@ -24,6 +24,10 @@ class NotesViewModel : ViewModel() {
     fun createNote(note: Note) {
         _notes.add(note)
     }
+
+    fun deleteNotes(ids: List<String>) {
+        _notes.removeIf { ids.contains(it.id) }
+    }
 }
 
 private fun getNotesList() = List(10) { Note("I am Note #$it") }
