@@ -1,9 +1,19 @@
-package com.example.reminder
+package com.example.reminder.data
 
-import java.util.*
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 
-class NoteInventory : LinkedList<Note>() {
-/*    private val notes = LinkedList<Note>()
+class NotesRepository {
+
+    fun getAllNotes(): Flow<List<Note>> = flow { emit(NotesDataProvider.notes) }
+
+/*
+    fun getNotesOn(date: LocalDate): Flow<List<Note>> = flow {
+        val notesOnDay = NotesDataProvider.notes.filter { it.dateTime.dayOfYear.equals(date) }
+        emit(notesOnDay)
+    }
+
+    fun getNote(id: String): Note? = NotesDataProvider.notes.firstOrNull { it.id == id }
 
     private fun getIndex(id: String): Int? {
         for ((idx, note) in notes.withIndex())
@@ -48,5 +58,6 @@ class NoteInventory : LinkedList<Note>() {
         val idx = getIndex(id) ?: return false
         notes[idx] = changeWith
         return true
-    }*/
+    }
+*/
 }

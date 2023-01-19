@@ -1,17 +1,17 @@
 @file:OptIn(
     ExperimentalMaterial3Api::class,
-    ExperimentalComposeUiApi::class,
-    ExperimentalFoundationApi::class
+    ExperimentalFoundationApi::class,
+    ExperimentalComposeUiApi::class
 )
 
 package com.example.reminder.ui
 
-import android.os.CountDownTimer
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -22,16 +22,16 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.example.reminder.Note
-import com.example.reminder.NotesViewModel
+import com.example.reminder.data.Note
+import com.example.reminder.data.ThemePreferences
 import com.example.reminder.ui.theme.ReminderTheme
 import kotlinx.coroutines.launch
 import java.util.*
@@ -44,6 +44,7 @@ private fun capitalize(word: String?): String {
         ) else it.toString()
     } ?: "Master"
 }
+
 
 @Composable
 fun NoteItem(note: Note, modifier: Modifier = Modifier, action: @Composable () -> Unit) {
@@ -86,33 +87,31 @@ fun WelcomeDialog(
     isOpen: Boolean,
     onClose: () -> Unit,
     accountName: String?,
-    onAccountNameChange: (String?) -> Unit
+    themePreference: ThemePreferences,
+    onAccountNameChange: (String?) -> Unit,
+    onThemePreferenceChange: (Boolean) -> Unit
 ) {
     var done by remember { mutableStateOf(false) }
 
     AnimatedVisibility(isOpen) {
         var name by remember { mutableStateOf(accountName ?: "") }
-        AlertDialog(onDismissRequest = onClose,
+        AlertDialog(
+            onDismissRequest = onClose,
             confirmButton = {
                 Button(onClick = {
                     name = name.trim()
-                    if (name == "") {
-                        onAccountNameChange(null)
-                        onClose()
-                    } else {
-                        onAccountNameChange(name)
-                        onClose()
-                        done = true
-                    }
+                    onAccountNameChange(if (name == "") null else name)
+                    onClose()
+                    done = true
                 }) { Text("Ok") }
             },
             dismissButton = { TextButton(onClick = onClose) { Text("Dismiss") } },
             icon = { Icon(Icons.Rounded.Badge, null) },
             title = { Text("Welcome ${capitalize(accountName)}!") },
             text = {
-                Column {
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("I am your Personal Call Assistant!! 👩🏻‍⚕️️")
-                    Spacer(Modifier.height(16.dp))
+
                     OutlinedTextField(value = name,
                         onValueChange = { name = it },
                         label = { Text("State your Nickname") },
@@ -121,20 +120,21 @@ fun WelcomeDialog(
                         shape = MaterialTheme.shapes.large
                     )
                 }
-            })
+            },
+        )
     }
 
     AnimatedVisibility(done) {
-        object : CountDownTimer(4000, 1000) {
-            override fun onTick(millisUntilFinished: Long) {
-                if (!done) cancel()
-            }
-
-            override fun onFinish() {
-                done = false
-                cancel()
-            }
-        }.start()
+//        object : CountDownTimer(4000, 1000) {
+//            override fun onTick(millisUntilFinished: Long) {
+//                if (!done) cancel()
+//            }
+//
+//            override fun onFinish() {
+//                done = false
+//                cancel()
+//            }
+//        }.start()
         AlertDialog(onDismissRequest = { done = false },
             confirmButton = { TextButton({ done = false }) { Text("Ok") } },
             icon = { Icon(Icons.Rounded.SupportAgent, null) },
@@ -144,15 +144,36 @@ fun WelcomeDialog(
                 )
             },
             text = {
-                Text(
-                    "I shall serve you well! 👩🏻‍⚕️",
-                    Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                    Text(
+                        "I shall serve you well! 👩🏻‍⚕️",
+                        Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceAround,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(text = "Dark Theme", style = MaterialTheme.typography.titleMedium)
+
+                        Switch(checked = themePreference == ThemePreferences.DARK,
+                            onCheckedChange = onThemePreferenceChange,
+                            thumbContent = {
+                                Crossfade(themePreference == ThemePreferences.DARK) {
+                                    when (it) {
+                                        true -> Icon(Icons.Rounded.DarkMode, null)
+                                        false -> Icon(Icons.Rounded.LightMode, null)
+                                    }
+                                }
+
+                            })
+                    }
+                }
             })
     }
 }
-
 
 @Composable
 fun CreateNoteDialog(isOpen: Boolean, onClose: () -> Unit, onCreate: (Note) -> Unit) {
@@ -164,15 +185,14 @@ fun CreateNoteDialog(isOpen: Boolean, onClose: () -> Unit, onCreate: (Note) -> U
         var isError by remember { mutableStateOf(false) }
         AlertDialog(onDismissRequest = onClose, confirmButton = {
             Button({
-                note = note.trim()
-                if (note == "") isError = true else {
+                if (note.isBlank()) isError = true else {
                     isError = false
-                    onCreate(Note(note))
+                    onCreate(Note(note.trim()))
                     note = ""
                     onClose()
                 }
             }) { Text("Ok") }
-        }, dismissButton = {
+        }, modifier = Modifier.wrapContentHeight(), dismissButton = {
             TextButton(onClick = onClose) { Text("Dismiss") }
         }, icon = { Icon(Icons.Rounded.EditNote, null) }, title = {
             Text("Create a new Note!")
@@ -207,7 +227,7 @@ fun CreateNoteDialog(isOpen: Boolean, onClose: () -> Unit, onCreate: (Note) -> U
 }
 
 @Composable
-fun DeleteNoteDialog(isOpen: Boolean, onClose: () -> Unit, onDelete: () -> Unit) {
+fun DeleteNoteDialog(isOpen: Boolean, count: Int, onClose: () -> Unit, onDelete: () -> Unit) {
     AnimatedVisibility(visible = isOpen) {
         AlertDialog(onDismissRequest = onClose, confirmButton = {
             Button(
@@ -224,7 +244,7 @@ fun DeleteNoteDialog(isOpen: Boolean, onClose: () -> Unit, onDelete: () -> Unit)
         }, dismissButton = {
             TextButton(onClick = onClose) { Text("Cancel") }
         }, icon = { Icon(Icons.Rounded.DeleteSweep, null) }, title = {
-            Text("Delete 3 Notes!")
+            Text("Delete $count Note${if (count > 1) "s" else ""}!")
         }, text = { Text("Are you sure?") })
     }
 }
@@ -233,7 +253,9 @@ fun DeleteNoteDialog(isOpen: Boolean, onClose: () -> Unit, onDelete: () -> Unit)
 fun TopBar(
     scrollBehavior: TopAppBarScrollBehavior,
     accountName: String?,
+    themePreference: ThemePreferences,
     onChangeAccountName: (String?) -> Unit,
+    onThemePreferenceChange: (Boolean) -> Unit,
     onClickDelete: () -> Unit,
 ) {
     var openWelcomeDialog by remember { mutableStateOf((accountName == null)) }
@@ -257,16 +279,28 @@ fun TopBar(
     WelcomeDialog(
         isOpen = openWelcomeDialog,
         onClose = { openWelcomeDialog = false },
-        accountName = accountName
-    ) { onChangeAccountName(it) }
+        accountName,
+        themePreference,
+        onAccountNameChange = { onChangeAccountName(it) },
+        onThemePreferenceChange
+    )
 }
 
 @Composable
 fun NoteActionFab(
-    label: String, icon: @Composable () -> Unit, expanded: Boolean, onOpenDialog: () -> Unit
+    selectionMode: Boolean, expandedFab: Boolean, onOpenDialog: () -> Unit
 ) {
-    ExtendedFloatingActionButton(
-        text = { Text(label) }, icon, onClick = onOpenDialog, expanded = expanded
+    ExtendedFloatingActionButton(text = {
+        Crossfade(targetState = selectionMode) {
+            if (it) Text(text = "Remove Note") else Text(text = "Add Note")
+        }
+    }, icon = {
+        Crossfade(targetState = selectionMode) {
+            if (it) Icon(
+                Icons.Rounded.Delete, "remove note"
+            ) else Icon(Icons.Rounded.Create, "add note")
+        }
+    }, onClick = onOpenDialog, expanded = expandedFab
     )
 }
 
@@ -276,6 +310,7 @@ fun NotesList(
     listState: LazyListState,
     snackBarHostState: SnackbarHostState,
     selectionMode: Boolean,
+    isChecked: (id: String) -> Boolean,
     onChecked: (String, Boolean) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
@@ -291,10 +326,10 @@ fun NotesList(
                         .animateItemPlacement()
                 ) { selectable ->
                     if (selectable) {
-                        var checked by remember { mutableStateOf(false) }
+                        var checked by remember { mutableStateOf(isChecked(note.id)) }
                         Checkbox(checked, onCheckedChange = {
                             checked = it
-                            onChecked(note.id, checked)
+                            onChecked(note.id, it)
                         })
                     } else {
                         IconButton(onClick = {
@@ -308,12 +343,14 @@ fun NotesList(
                 }
             }
         }
-        item { Spacer(Modifier.height(8.dp)) }
+        item { Spacer(Modifier.height(96.dp)) }
     }
 }
 
 @Composable
-fun NotesView(notesViewModel: NotesViewModel = viewModel()) {
+fun NotesScreen(viewModel: NotesViewModel = viewModel()) {
+    val uiState by viewModel.uiState.collectAsState()
+
     val listState = rememberLazyListState()
     val snackBarHostState = remember { SnackbarHostState() }
 
@@ -328,57 +365,66 @@ fun NotesView(notesViewModel: NotesViewModel = viewModel()) {
 
     val selectedNotes = remember { mutableListOf<String>() }
 
-    ReminderTheme {
+    ReminderTheme(
+        darkTheme = when (uiState.themePreference) {
+            ThemePreferences.AUTO -> isSystemInDarkTheme()
+            ThemePreferences.DARK -> true
+            ThemePreferences.LIGHT -> false
+        }
+    ) {
         // A surface container using the 'background' color from the theme
 
-        Scaffold(modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection), topBar = {
-            TopBar(
-                scrollBehavior,
-                accountName = notesViewModel.accountName,
-                onChangeAccountName = { notesViewModel.updateAccountName(it) },
-                onClickDelete = { selectionMode = !selectionMode },
-            )
-        }, snackbarHost = { SnackbarHost(snackBarHostState) }, floatingActionButton = {
-            Crossfade(targetState = selectionMode, modifier = Modifier.animateContentSize()) {
-                if (it) {
-                    NoteActionFab(label = "Remove Note", icon = {
-                        Icon(Icons.Rounded.Delete, "remove note")
-                    }, expanded = expandedFab) { openDeleteNoteDialog = true }
-                } else {
-                    NoteActionFab(label = "Add Note", icon = {
-                        Icon(Icons.Rounded.Create, "create note")
-                    }, expanded = expandedFab) { openCreateNoteDialog = true }
+        Scaffold(
+            modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
+            topBar = {
+                TopBar(
+                    scrollBehavior,
+                    accountName = uiState.accountName,
+                    themePreference = uiState.themePreference,
+                    onChangeAccountName = { viewModel.setAccountName(it) },
+                    onThemePreferenceChange = { viewModel.setThemePreference(if (it) ThemePreferences.DARK else ThemePreferences.AUTO) },
+                    onClickDelete = { selectionMode = !selectionMode },
+                )
+            },
+            snackbarHost = { SnackbarHost(snackBarHostState) },
+            floatingActionButton = {
+                NoteActionFab(selectionMode, expandedFab) {
+                    if (selectionMode) openDeleteNoteDialog = true else openCreateNoteDialog = true
                 }
-            }
-        }) { scaffoldPadding ->
+            },
+        ) { scaffoldPadding ->
             Surface(
                 Modifier
                     .fillMaxSize()
                     .padding(scaffoldPadding),
                 color = MaterialTheme.colorScheme.background
             ) {
-                NotesList(
-                    notes = notesViewModel.notes.reversed(),
+                NotesList(notes = uiState.notes.reversed(),
                     listState,
                     snackBarHostState,
                     selectionMode,
-                ) { id, checked -> if (checked) selectedNotes.add(id) else selectedNotes.remove(id) }
+                    isChecked = { selectedNotes.contains(it) }) { id, checked ->
+                    if (checked) selectedNotes.add(id) else selectedNotes.remove(id)
+                }
 
                 CreateNoteDialog(isOpen = openCreateNoteDialog, onClose = {
                     openCreateNoteDialog = false
-                }) { notesViewModel.createNote(it) }
-                DeleteNoteDialog(isOpen = openDeleteNoteDialog, onClose = {
-                    openDeleteNoteDialog = false
-                    selectionMode = false
-                }) { notesViewModel.deleteNotes(selectedNotes) }
+                }) { viewModel.createNote(it) }
+
+                DeleteNoteDialog(isOpen = openDeleteNoteDialog,
+                    count = selectedNotes.size,
+                    onClose = {
+                        openDeleteNoteDialog = false
+                        selectionMode = false
+                    }) { viewModel.deleteNotes(selectedNotes) }
             }
         }
     }
 }
 
 
-@Preview
-@Composable
-fun DefaultPreview() {
-    NotesView()
-}
+//@Preview
+//@Composable
+//fun DefaultPreview() {
+//    NotesView()
+//}
