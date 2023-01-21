@@ -5,40 +5,65 @@ import androidx.lifecycle.viewModelScope
 import com.example.reminder.data.AccountRepository
 import com.example.reminder.data.Note
 import com.example.reminder.data.NotesRepository
-import com.example.reminder.data.ThemePreferences
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
+import java.io.IOException
 
 
 class NotesViewModel(
+    private val accountRepository: AccountRepository,
     private val notesRepository: NotesRepository = NotesRepository(),
-    private val accountRepository: AccountRepository = AccountRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(NotesUiState())
     val uiState: StateFlow<NotesUiState> = _uiState.asStateFlow()
 
     init {
-        observeNotes()
-    }
-
-    private fun observeNotes() {
         viewModelScope.launch {
-            notesRepository.getAllNotes().catch {}.collect {
-                _uiState.value = NotesUiState(notes = it, accountName = accountRepository.getName(), themePreference = accountRepository.getThemePreference())
+            accountRepository.account.catch {
+                if (it is IOException) {
+                    it.printStackTrace()
+                    _uiState.value = NotesUiState()
+                } else throw it
+            }.collect {
+                _uiState.value =
+                    NotesUiState(accountName = it.name, prefersDarkTheme = it.prefersDarkTheme)
+            }
+
+            notesRepository.getAllNotes().catch {
+                if (it is IOException) it.printStackTrace()
+                else throw it
+            }.collect { notes ->
+                _uiState.update { it.copy(notes = notes) }
             }
         }
     }
 
-    fun setAccountName(name: String?) {
-        accountRepository.setName(name)
-        _uiState.update { it.copy(accountName = accountRepository.getName()) }
+
+    fun saveAccountName(name: String?) {
+        viewModelScope.launch {
+            accountRepository.saveAccountName(name)
+            accountRepository.accountName.catch {
+                if (it is IOException) it.printStackTrace()
+                else throw it
+            }.collect { name ->
+                _uiState.update { it.copy(accountName = name) }
+            }
+        }
     }
 
-    fun setThemePreference(theme: ThemePreferences) {
-        accountRepository.setThemePreference(theme)
-        _uiState.update { it.copy(themePreference = accountRepository.getThemePreference()) }
+    fun saveThemePreference(prefersDarkTheme: Boolean) {
+        viewModelScope.launch {
+            accountRepository.saveThemePreference(prefersDarkTheme)
+            accountRepository.prefersDarkTheme.catch {
+                if (it is IOException) it.printStackTrace()
+                else throw it
+            }.collect { theme ->
+                _uiState.update { it.copy(prefersDarkTheme = theme) }
+            }
+        }
     }
+
 
     fun createNote(note: Note) {
         _uiState.update { it.copy(notes = _uiState.value.notes + note) }

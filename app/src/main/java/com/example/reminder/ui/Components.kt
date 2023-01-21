@@ -11,7 +11,6 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
@@ -29,9 +28,7 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.reminder.data.Note
-import com.example.reminder.data.ThemePreferences
 import com.example.reminder.ui.theme.ReminderTheme
 import kotlinx.coroutines.launch
 import java.util.*
@@ -87,7 +84,7 @@ fun WelcomeDialog(
     isOpen: Boolean,
     onClose: () -> Unit,
     accountName: String?,
-    themePreference: ThemePreferences,
+    prefersDarkTheme: Boolean,
     onAccountNameChange: (String?) -> Unit,
     onThemePreferenceChange: (Boolean) -> Unit
 ) {
@@ -158,16 +155,13 @@ fun WelcomeDialog(
                     ) {
                         Text(text = "Dark Theme", style = MaterialTheme.typography.titleMedium)
 
-                        Switch(checked = themePreference == ThemePreferences.DARK,
+                        Switch(checked = prefersDarkTheme,
                             onCheckedChange = onThemePreferenceChange,
                             thumbContent = {
-                                Crossfade(themePreference == ThemePreferences.DARK) {
-                                    when (it) {
-                                        true -> Icon(Icons.Rounded.DarkMode, null)
-                                        false -> Icon(Icons.Rounded.LightMode, null)
-                                    }
+                                Crossfade(prefersDarkTheme) {
+                                    if (it) Icon(Icons.Rounded.DarkMode, null)
+                                    else Icon(Icons.Rounded.LightMode, null)
                                 }
-
                             })
                     }
                 }
@@ -253,12 +247,13 @@ fun DeleteNoteDialog(isOpen: Boolean, count: Int, onClose: () -> Unit, onDelete:
 fun TopBar(
     scrollBehavior: TopAppBarScrollBehavior,
     accountName: String?,
-    themePreference: ThemePreferences,
+    prefersDarkTheme: Boolean,
     onChangeAccountName: (String?) -> Unit,
     onThemePreferenceChange: (Boolean) -> Unit,
     onClickDelete: () -> Unit,
 ) {
-    var openWelcomeDialog by remember { mutableStateOf((accountName == null)) }
+    println("____account_name____ $accountName")
+    var openWelcomeDialog by remember { mutableStateOf(false) }
 
     LargeTopAppBar(
         title = { Text("Hello ${capitalize(accountName)}!") },
@@ -280,7 +275,7 @@ fun TopBar(
         isOpen = openWelcomeDialog,
         onClose = { openWelcomeDialog = false },
         accountName,
-        themePreference,
+        prefersDarkTheme,
         onAccountNameChange = { onChangeAccountName(it) },
         onThemePreferenceChange
     )
@@ -348,8 +343,8 @@ fun NotesList(
 }
 
 @Composable
-fun NotesScreen(viewModel: NotesViewModel = viewModel()) {
-    val uiState by viewModel.uiState.collectAsState()
+fun NotesScreen(notesViewModel: NotesViewModel) {
+    val uiState by notesViewModel.uiState.collectAsState()
 
     val listState = rememberLazyListState()
     val snackBarHostState = remember { SnackbarHostState() }
@@ -365,13 +360,7 @@ fun NotesScreen(viewModel: NotesViewModel = viewModel()) {
 
     val selectedNotes = remember { mutableListOf<String>() }
 
-    ReminderTheme(
-        darkTheme = when (uiState.themePreference) {
-            ThemePreferences.AUTO -> isSystemInDarkTheme()
-            ThemePreferences.DARK -> true
-            ThemePreferences.LIGHT -> false
-        }
-    ) {
+    ReminderTheme(darkTheme = uiState.prefersDarkTheme) {
         // A surface container using the 'background' color from the theme
 
         Scaffold(
@@ -380,9 +369,9 @@ fun NotesScreen(viewModel: NotesViewModel = viewModel()) {
                 TopBar(
                     scrollBehavior,
                     accountName = uiState.accountName,
-                    themePreference = uiState.themePreference,
-                    onChangeAccountName = { viewModel.setAccountName(it) },
-                    onThemePreferenceChange = { viewModel.setThemePreference(if (it) ThemePreferences.DARK else ThemePreferences.AUTO) },
+                    prefersDarkTheme = uiState.prefersDarkTheme,
+                    onChangeAccountName = { notesViewModel.saveAccountName(it) },
+                    onThemePreferenceChange = { notesViewModel.saveThemePreference(it) },
                     onClickDelete = { selectionMode = !selectionMode },
                 )
             },
@@ -409,14 +398,14 @@ fun NotesScreen(viewModel: NotesViewModel = viewModel()) {
 
                 CreateNoteDialog(isOpen = openCreateNoteDialog, onClose = {
                     openCreateNoteDialog = false
-                }) { viewModel.createNote(it) }
+                }) { notesViewModel.createNote(it) }
 
                 DeleteNoteDialog(isOpen = openDeleteNoteDialog,
                     count = selectedNotes.size,
                     onClose = {
                         openDeleteNoteDialog = false
                         selectionMode = false
-                    }) { viewModel.deleteNotes(selectedNotes) }
+                    }) { notesViewModel.deleteNotes(selectedNotes) }
             }
         }
     }

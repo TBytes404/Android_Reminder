@@ -1,6 +1,5 @@
 package com.example.reminder.data
 
 data class Account(
-    var name: String? = null,
-    var themePreference: ThemePreferences = ThemePreferences.AUTO
+    var name: String? = null, var prefersDarkTheme: Boolean = false
 )
