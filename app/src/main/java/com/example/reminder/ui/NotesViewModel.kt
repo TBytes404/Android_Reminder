@@ -1,75 +1,69 @@
 package com.example.reminder.ui
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.example.reminder.data.AccountRepository
 import com.example.reminder.data.Note
 import com.example.reminder.data.NotesRepository
-import kotlinx.coroutines.flow.*
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import java.io.IOException
+
+
+data class NotesUiState(
+    val notes: List<Note> = emptyList(),
+)
+
+data class AccountUiState(
+    val accountName: String? = null, val prefersDarkTheme: Boolean = false
+)
 
 
 class NotesViewModel(
     private val accountRepository: AccountRepository,
-    private val notesRepository: NotesRepository = NotesRepository(),
+    private val notesRepository: NotesRepository,
 ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow(NotesUiState())
-    val uiState: StateFlow<NotesUiState> = _uiState.asStateFlow()
+    val notesUiState: StateFlow<NotesUiState> = notesRepository.allNotes.map { NotesUiState(it) }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(TIMEOUT_MILLIS), NotesUiState())
 
-    init {
-        viewModelScope.launch {
-            accountRepository.account.catch {
-                if (it is IOException) {
-                    it.printStackTrace()
-                    _uiState.value = NotesUiState()
-                } else throw it
-            }.collect {
-                _uiState.value =
-                    NotesUiState(accountName = it.name, prefersDarkTheme = it.prefersDarkTheme)
-            }
-
-            notesRepository.getAllNotes().catch {
-                if (it is IOException) it.printStackTrace()
-                else throw it
-            }.collect { notes ->
-                _uiState.update { it.copy(notes = notes) }
-            }
-        }
-    }
+    val accountUiState: StateFlow<AccountUiState> =
+        accountRepository.account.map { AccountUiState(it.name, it.prefersDarkTheme) }.stateIn(
+                viewModelScope, SharingStarted.WhileSubscribed(TIMEOUT_MILLIS), AccountUiState()
+            )
 
 
     fun saveAccountName(name: String?) {
-        viewModelScope.launch {
-            accountRepository.saveAccountName(name)
-            accountRepository.accountName.catch {
-                if (it is IOException) it.printStackTrace()
-                else throw it
-            }.collect { name ->
-                _uiState.update { it.copy(accountName = name) }
-            }
-        }
+        viewModelScope.launch { accountRepository.saveAccountName(name) }
     }
 
     fun saveThemePreference(prefersDarkTheme: Boolean) {
-        viewModelScope.launch {
-            accountRepository.saveThemePreference(prefersDarkTheme)
-            accountRepository.prefersDarkTheme.catch {
-                if (it is IOException) it.printStackTrace()
-                else throw it
-            }.collect { theme ->
-                _uiState.update { it.copy(prefersDarkTheme = theme) }
+        viewModelScope.launch { accountRepository.saveThemePreference(prefersDarkTheme) }
+    }
+
+
+//    val allNotes: LiveData<List<Note>> = notesRepository.allNotes.asLiveData()
+
+    fun createNote(note: Note) = viewModelScope.launch { notesRepository.addNote(note) }
+
+    fun removeNotes(vararg ids: Int) =
+        viewModelScope.launch { notesRepository.removeNotes(ids = ids) }
+
+
+    companion object {
+        private const val TIMEOUT_MILLIS = 5_000L
+
+        val Factory: ViewModelProvider.Factory = viewModelFactory {
+            initializer {
+                val app = (this[APPLICATION_KEY] as ReminderApplication)
+                NotesViewModel(app.accountRepository, app.notesRepository)
             }
         }
-    }
-
-
-    fun createNote(note: Note) {
-        _uiState.update { it.copy(notes = _uiState.value.notes + note) }
-    }
-
-    fun deleteNotes(ids: List<String>) {
-        _uiState.update { state -> state.copy(notes = _uiState.value.notes.filterNot { it.id in ids }) }
     }
 }

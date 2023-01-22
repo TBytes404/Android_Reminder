@@ -3,18 +3,16 @@ package com.example.reminder.ui
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import com.example.reminder.data.AccountRepository
+import androidx.activity.viewModels
 
 class MainActivity : ComponentActivity() {
-    private lateinit var accountRepository: AccountRepository
+    private val notesViewModel: NotesViewModel by viewModels { NotesViewModel.Factory }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        accountRepository = AccountRepository(context = applicationContext)
-
         setContent {
-            NotesScreen(notesViewModel = NotesViewModel(accountRepository))
+            NotesScreen(notesViewModel)
         }
     }
 }

@@ -1,13 +1,15 @@
 @file:OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalFoundationApi::class,
-    ExperimentalComposeUiApi::class
+    ExperimentalComposeUiApi::class,
+    ExperimentalAnimationApi::class
 )
 
 package com.example.reminder.ui
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -30,8 +32,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.example.reminder.data.Note
 import com.example.reminder.ui.theme.ReminderTheme
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.*
+import kotlin.time.Duration.Companion.seconds
 
 
 private fun capitalize(word: String?): String {
@@ -109,12 +113,13 @@ fun WelcomeDialog(
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
                     Text("I am your Personal Call Assistant!! 👩🏻‍⚕️️")
 
-                    OutlinedTextField(value = name,
+                    OutlinedTextField(
+                        value = name,
                         onValueChange = { name = it },
                         label = { Text("State your Nickname") },
                         placeholder = { Text("Nickname") },
                         singleLine = true,
-                        shape = MaterialTheme.shapes.large
+                        shape = MaterialTheme.shapes.large,
                     )
                 }
             },
@@ -252,8 +257,13 @@ fun TopBar(
     onThemePreferenceChange: (Boolean) -> Unit,
     onClickDelete: () -> Unit,
 ) {
-    println("____account_name____ $accountName")
     var openWelcomeDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(accountName) {
+        delay(1.seconds)
+        openWelcomeDialog = accountName == null
+    }
+
 
     LargeTopAppBar(
         title = { Text("Hello ${capitalize(accountName)}!") },
@@ -305,8 +315,8 @@ fun NotesList(
     listState: LazyListState,
     snackBarHostState: SnackbarHostState,
     selectionMode: Boolean,
-    isChecked: (id: String) -> Boolean,
-    onChecked: (String, Boolean) -> Unit,
+    isChecked: (id: Int) -> Boolean,
+    onChecked: (Int, Boolean) -> Unit,
 ) {
     val scope = rememberCoroutineScope()
 
@@ -344,7 +354,8 @@ fun NotesList(
 
 @Composable
 fun NotesScreen(notesViewModel: NotesViewModel) {
-    val uiState by notesViewModel.uiState.collectAsState()
+    val accountUiState by notesViewModel.accountUiState.collectAsState()
+    val notesUiState by notesViewModel.notesUiState.collectAsState()
 
     val listState = rememberLazyListState()
     val snackBarHostState = remember { SnackbarHostState() }
@@ -358,9 +369,9 @@ fun NotesScreen(notesViewModel: NotesViewModel) {
     var selectionMode by remember { mutableStateOf(false) }
     val expandedFab by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
 
-    val selectedNotes = remember { mutableListOf<String>() }
+    val selectedNotes = remember { mutableListOf<Int>() }
 
-    ReminderTheme(darkTheme = uiState.prefersDarkTheme) {
+    ReminderTheme(darkTheme = accountUiState.prefersDarkTheme) {
         // A surface container using the 'background' color from the theme
 
         Scaffold(
@@ -368,8 +379,8 @@ fun NotesScreen(notesViewModel: NotesViewModel) {
             topBar = {
                 TopBar(
                     scrollBehavior,
-                    accountName = uiState.accountName,
-                    prefersDarkTheme = uiState.prefersDarkTheme,
+                    accountName = accountUiState.accountName,
+                    prefersDarkTheme = accountUiState.prefersDarkTheme,
                     onChangeAccountName = { notesViewModel.saveAccountName(it) },
                     onThemePreferenceChange = { notesViewModel.saveThemePreference(it) },
                     onClickDelete = { selectionMode = !selectionMode },
@@ -388,24 +399,38 @@ fun NotesScreen(notesViewModel: NotesViewModel) {
                     .padding(scaffoldPadding),
                 color = MaterialTheme.colorScheme.background
             ) {
-                NotesList(notes = uiState.notes.reversed(),
-                    listState,
-                    snackBarHostState,
-                    selectionMode,
-                    isChecked = { selectedNotes.contains(it) }) { id, checked ->
-                    if (checked) selectedNotes.add(id) else selectedNotes.remove(id)
+                AnimatedVisibility(visible = notesUiState.notes.isEmpty()) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "Empty Reminder List!",
+                            color = MaterialTheme.colorScheme.outline,
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
+                AnimatedVisibility(visible = notesUiState.notes.isNotEmpty()) {
+                    NotesList(notes = notesUiState.notes.reversed(),
+                        listState,
+                        snackBarHostState,
+                        selectionMode,
+                        isChecked = { selectedNotes.contains(it) }) { id, checked ->
+                        if (checked) selectedNotes.add(id) else selectedNotes.remove(id)
+                    }
                 }
 
                 CreateNoteDialog(isOpen = openCreateNoteDialog, onClose = {
                     openCreateNoteDialog = false
                 }) { notesViewModel.createNote(it) }
 
-                DeleteNoteDialog(isOpen = openDeleteNoteDialog,
+                DeleteNoteDialog(
+                    isOpen = openDeleteNoteDialog,
                     count = selectedNotes.size,
                     onClose = {
                         openDeleteNoteDialog = false
                         selectionMode = false
-                    }) { notesViewModel.deleteNotes(selectedNotes) }
+                    }) { notesViewModel.removeNotes(ids = selectedNotes.toIntArray()) }
             }
         }
     }

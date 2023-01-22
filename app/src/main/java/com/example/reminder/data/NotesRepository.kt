@@ -1,11 +1,23 @@
 package com.example.reminder.data
 
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
+import androidx.annotation.WorkerThread
 
-class NotesRepository {
+class NotesRepository(private val noteDao: NoteDao) {
 
-    fun getAllNotes(): Flow<List<Note>> = flow { emit(NotesDataProvider.notes) }
+    val allNotes = noteDao.getAll()
+
+    @WorkerThread
+    suspend fun addNote(note: Note) {
+        noteDao.create(note)
+    }
+
+    @WorkerThread
+    suspend fun removeNotes(vararg ids: Int) {
+        noteDao.deleteById(ids = ids)
+    }
+
+
+//    fun getAllNotes(): Flow<List<Note>> = flow { emit(NotesDataProvider.notes) }
 
 /*
     fun getNotesOn(date: LocalDate): Flow<List<Note>> = flow {

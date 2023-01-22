@@ -1,0 +1,35 @@
+package com.example.reminder.data
+
+import androidx.room.*
+import kotlinx.coroutines.flow.Flow
+
+@Dao
+interface NoteDao {
+
+    @Query("SELECT * FROM notes ORDER BY date_time ASC")
+    fun getAll(): Flow<List<Note>>
+
+//    @Query("SELECT * FROM notes WHERE note LIKE '%:search%' ORDER BY date_time ASC")
+//    suspend fun search(search: String): List<Note>
+//
+//    @Query("SELECT * FROM notes WHERE data_time > :at ORDER BY date_time ASC")
+//    suspend fun findAfter(at: LocalDateTime): List<Note>
+//
+//    @Query("SELECT * FROM notes WHERE data_time < :at ORDER BY date_time ASC")
+//    suspend fun findBefore(at: LocalDateTime): List<Note>
+//
+//    @Query("SELECT * FROM notes WHERE data_time BETWEEN :from AND :at ORDER BY date_time ASC")
+//    suspend fun find(from: LocalDateTime, at: LocalDateTime): List<Note>
+
+    @Insert
+    suspend fun create(vararg notes: Note)
+
+//    @Delete
+//    suspend fun delete(vararg notes: Note)
+
+    @Query("DELETE FROM notes WHERE id IN (:ids)")
+    suspend fun deleteById(vararg ids: Int)
+
+//    @Update
+//    suspend fun update(vararg notes: Note)
+}

@@ -2,12 +2,13 @@ package com.example.reminder.data
 
 import android.content.Context
 import androidx.datastore.core.DataStore
-import androidx.datastore.preferences.core.*
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
-import java.io.IOException
 
 
 private const val ACCOUNT_PREFERENCES_NAME = "account_preferences"
@@ -28,37 +29,37 @@ class AccountRepository(private val context: Context) {
         )
     }
 
-    suspend fun saveAccount(account: Account) {
-        context.datastore.edit {
-            it[ACCOUNT_NAME] = account.name ?: ""
-            it[PREFERS_DARK_THEME] = account.prefersDarkTheme
-        }
-    }
+//    suspend fun saveAccount(account: Account) {
+//        context.datastore.edit {
+//            it[ACCOUNT_NAME] = account.name ?: ""
+//            it[PREFERS_DARK_THEME] = account.prefersDarkTheme
+//        }
+//    }
 
-    val accountName: Flow<String?> = context.datastore.data.catch {
-        if (it is IOException) {
-            it.printStackTrace()
-            emit(emptyPreferences())
-        } else {
-            throw it
-        }
-    }.map {
-        val name = it[ACCOUNT_NAME]
-        if (name?.trim() == "") null else name
-    }
+//    val accountName: Flow<String?> = context.datastore.data.catch {
+//        if (it is IOException) {
+//            it.printStackTrace()
+//            emit(emptyPreferences())
+//        } else {
+//            throw it
+//        }
+//    }.map {
+//        val name = it[ACCOUNT_NAME]
+//        if (name?.trim() == "") null else name
+//    }
 
     suspend fun saveAccountName(name: String?) {
         context.datastore.edit { it[ACCOUNT_NAME] = name ?: "" }
     }
 
-    val prefersDarkTheme: Flow<Boolean> = context.datastore.data.catch {
-        if (it is IOException) {
-            it.printStackTrace()
-            emit(emptyPreferences())
-        } else {
-            throw it
-        }
-    }.map { it[PREFERS_DARK_THEME] ?: false }
+//    val prefersDarkTheme: Flow<Boolean> = context.datastore.data.catch {
+//        if (it is IOException) {
+//            it.printStackTrace()
+//            emit(emptyPreferences())
+//        } else {
+//            throw it
+//        }
+//    }.map { it[PREFERS_DARK_THEME] ?: false }
 
     suspend fun saveThemePreference(prefersDarkTheme: Boolean) {
         context.datastore.edit { it[PREFERS_DARK_THEME] = prefersDarkTheme }
