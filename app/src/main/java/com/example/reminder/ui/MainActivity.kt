@@ -4,6 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import com.example.reminder.ui.componets.NotesScreen
 
 class MainActivity : ComponentActivity() {
     private val notesViewModel: NotesViewModel by viewModels { NotesViewModel.Factory }

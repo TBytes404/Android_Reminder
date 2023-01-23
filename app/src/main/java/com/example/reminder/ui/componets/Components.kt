@@ -1,11 +1,10 @@
 @file:OptIn(
     ExperimentalMaterial3Api::class,
     ExperimentalFoundationApi::class,
-    ExperimentalComposeUiApi::class,
     ExperimentalAnimationApi::class
 )
 
-package com.example.reminder.ui
+package com.example.reminder.ui.componets
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
@@ -24,13 +23,12 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.DialogProperties
 import com.example.reminder.data.Note
+import com.example.reminder.ui.NotesViewModel
 import com.example.reminder.ui.theme.ReminderTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -38,7 +36,7 @@ import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
 
-private fun capitalize(word: String?): String {
+fun capitalize(word: String?): String {
     return word?.replaceFirstChar {
         if (it.isLowerCase()) it.titlecase(
             Locale.getDefault()
@@ -52,7 +50,7 @@ fun NoteItem(note: Note, modifier: Modifier = Modifier, action: @Composable () -
     var isExpanded by remember { mutableStateOf(false) }
     Surface(
         modifier = modifier.clickable { isExpanded = !isExpanded },
-        MaterialTheme.shapes.large,
+        shape = MaterialTheme.shapes.large,
         shadowElevation = 1.dp
     ) {
         Column {
@@ -117,6 +115,13 @@ fun WelcomeDialog(
                         value = name,
                         onValueChange = { name = it },
                         label = { Text("State your Nickname") },
+                        trailingIcon = {
+                            AnimatedVisibility(visible = name.isNotBlank()) {
+                                IconButton(onClick = { name = "" }) {
+                                    Icon(Icons.Rounded.Clear, null)
+                                }
+                            }
+                        },
                         placeholder = { Text("Nickname") },
                         singleLine = true,
                         shape = MaterialTheme.shapes.large,
@@ -137,6 +142,8 @@ fun WelcomeDialog(
 //                cancel()
 //            }
 //        }.start()
+//        LaunchedEffect(accountName) { if(accountName.isNotBlank()) done = true }
+
         AlertDialog(onDismissRequest = { done = false },
             confirmButton = { TextButton({ done = false }) { Text("Ok") } },
             icon = { Icon(Icons.Rounded.SupportAgent, null) },
@@ -175,57 +182,6 @@ fun WelcomeDialog(
 }
 
 @Composable
-fun CreateNoteDialog(isOpen: Boolean, onClose: () -> Unit, onCreate: (Note) -> Unit) {
-    var note by remember { mutableStateOf("") }
-//    val datePickerState = rememberDatePickerState()
-//    var showTimePicker by remember { mutableStateOf(false) }
-
-    AnimatedVisibility(visible = isOpen) {
-        var isError by remember { mutableStateOf(false) }
-        AlertDialog(onDismissRequest = onClose, confirmButton = {
-            Button({
-                if (note.isBlank()) isError = true else {
-                    isError = false
-                    onCreate(Note(note.trim()))
-                    note = ""
-                    onClose()
-                }
-            }) { Text("Ok") }
-        }, modifier = Modifier.wrapContentHeight(), dismissButton = {
-            TextButton(onClick = onClose) { Text("Dismiss") }
-        }, icon = { Icon(Icons.Rounded.EditNote, null) }, title = {
-            Text("Create a new Note!")
-        }, text = {
-            Column {
-                OutlinedTextField(
-                    value = note,
-                    onValueChange = { note = it },
-                    label = { Text("New Note") },
-                    placeholder = { Text("eg. Call Him Tomorrow.") },
-                    supportingText = {
-                        AnimatedVisibility(visible = isError) {
-                            Text("Can't create Empty note!")
-                        }
-                    },
-                    isError = isError,
-                    singleLine = true,
-                    shape = MaterialTheme.shapes.large,
-                )
-
-//            Spacer(Modifier.width(8.dp))
-//            TextButton({ showTimePicker = false }, Modifier.fillMaxWidth()) {
-//                Row(verticalAlignment = Alignment.CenterVertically){
-//                    Icon(Icons.Rounded.Timer, null)
-//                    Spacer(Modifier.width(8.dp))
-//                    Text("Pick the Time", style = MaterialTheme.typography.bodySmall)
-//                }
-//            }
-            }
-        }, properties = DialogProperties(usePlatformDefaultWidth = false))
-    }
-}
-
-@Composable
 fun DeleteNoteDialog(isOpen: Boolean, count: Int, onClose: () -> Unit, onDelete: () -> Unit) {
     AnimatedVisibility(visible = isOpen) {
         AlertDialog(onDismissRequest = onClose, confirmButton = {
@@ -259,11 +215,10 @@ fun TopBar(
 ) {
     var openWelcomeDialog by remember { mutableStateOf(false) }
 
-    LaunchedEffect(accountName) {
+    LaunchedEffect(Unit) {
         delay(1.seconds)
         openWelcomeDialog = accountName == null
     }
-
 
     LargeTopAppBar(
         title = { Text("Hello ${capitalize(accountName)}!") },
@@ -322,7 +277,7 @@ fun NotesList(
 
     LazyColumn(state = listState, modifier = Modifier.animateContentSize()) {
         item { Spacer(Modifier.height(8.dp)) }
-        items(notes) { note ->
+        items(notes, key = { it.id }) { note ->
             NoteItem(note, modifier = Modifier.animateItemPlacement()) {
                 Crossfade(
                     targetState = selectionMode,

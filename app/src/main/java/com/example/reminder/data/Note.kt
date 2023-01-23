@@ -20,8 +20,8 @@ class Converters {
 @Entity(tableName = "notes")
 @TypeConverters(Converters::class)
 data class Note(
-    @ColumnInfo(name = "note") var note: String,
-    @ColumnInfo(name = "date_time") val dateTime: LocalDateTime = LocalDateTime.now(),
+    @ColumnInfo(name = "note") val note: String,
+    @ColumnInfo(name = "date_time") val dateTime: LocalDateTime
 ) {
     @PrimaryKey(autoGenerate = true)
     var id: Int = 0
