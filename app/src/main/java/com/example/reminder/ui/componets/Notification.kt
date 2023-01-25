@@ -1,43 +1,116 @@
 package com.example.reminder.ui.componets
 
 import android.Manifest
-import android.app.Activity
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.app.PendingIntent
+import android.annotation.SuppressLint
+import android.app.*
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalContext
-import androidx.core.app.ActivityCompat
+import android.os.Build
+import androidx.core.app.ActivityCompat.*
 import androidx.core.app.NotificationCompat
-import androidx.core.app.NotificationCompat.EXTRA_NOTIFICATION_ID
 import androidx.core.app.NotificationManagerCompat
+import androidx.work.*
 import com.example.reminder.R
-import com.example.reminder.ui.ReminderApplication
+import com.example.reminder.data.Note
+import com.example.reminder.ui.MainActivity
+import java.time.LocalDateTime
+import java.time.ZoneOffset
+import java.util.concurrent.TimeUnit
 
 
-@Composable
-fun ShowNotification(title: String, content: String) {
-    val context = LocalContext.current
-    val channelId = "wow007"
-    val notificationId = 0
+private const val CHANNEL_ID = "wow007"
+//private const val ACTION_SNOOZE = "SNOOZE"
 
-    LaunchedEffect(Unit) {
-        createNotificationChannel(channelId, context)
+class ReminderWorker(private val context: Context, workerParameters: WorkerParameters) :
+    Worker(context, workerParameters) {
+    override fun doWork(): Result {
+        createNotification(
+            context,
+            inputData.getString("note").toString(),
+            inputData.getInt("id", 0)
+        )
+        return Result.success()
     }
-
-    showSimpleNotificationWithTapAction(context, channelId, notificationId, title, content)
 }
 
-fun createNotificationChannel(channelId: String, context: Context) {
+fun createWorkRequest(context: Context, note: Note) {
+    val boomDelay = note.dateTime.toInstant(ZoneOffset.UTC).epochSecond -
+            LocalDateTime.now().toInstant(ZoneOffset.UTC).epochSecond
+
+    val reminder = OneTimeWorkRequestBuilder<ReminderWorker>()
+        .setInitialDelay(boomDelay, TimeUnit.SECONDS)
+        .setInputData(workDataOf("note" to note.note, "id" to note.id))
+        .addTag("Reminder").build()
+
+    WorkManager.getInstance(context).enqueue(reminder)
+}
+
+@SuppressLint("MissingPermission")
+private fun createNotification(context: Context, note: String, id: Int) {
+    createNotificationChannel(context)
+
+    val defaultIntent = Intent(context, MainActivity::class.java).apply {
+        flags = Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
+    }
+    val defaultPendingIntent: PendingIntent =
+        PendingIntent.getActivity(context, id, defaultIntent, PendingIntent.FLAG_IMMUTABLE)
+
+//    val dismissIntent = Intent(context, MainActivity::class.java).apply {
+//        flags = Intent.
+//    }
+
+//    val dismissPendingIntent: PendingIntent =
+//        PendingIntent.getActivity(
+//            context, id, defaultIntent,
+//            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+//        )
+
+//    val snoozeIntent = Intent(this, MainActivity::class.java).apply {
+//        action = ACTION_SNOOZE
+//        putExtra(EXTRA_NOTIFICATION_ID, 0)
+//    }
+//    val snoozePendingIntent: PendingIntent =
+//        PendingIntent.getBroadcast(this, 0, snoozeIntent, 0)
+
+    val builder = NotificationCompat.Builder(context, CHANNEL_ID)
+        .setSmallIcon(R.drawable.ic_launcher_foreground)
+        .setContentTitle(note).setAutoCancel(true)
+        .setPriority(NotificationCompat.PRIORITY_MAX)
+        .setContentIntent(defaultPendingIntent).setOngoing(true)
+        .setDefaults(Notification.DEFAULT_ALL)
+        .addAction(R.drawable.ic_launcher_foreground, "Call", defaultPendingIntent)
+//        .addAction(R.drawable.ic_launcher_foreground, "Snooze", snoozePendingIntent)
+
+    requestNotificationPermission(context, id)
+
+    NotificationManagerCompat.from(context).notify(id, builder.build())
+}
+
+private fun requestNotificationPermission(context: Context, id: Int) {
+    if (checkSelfPermission(
+            context,
+            Manifest.permission.POST_NOTIFICATIONS
+        ) != PackageManager.PERMISSION_GRANTED
+    ) {
+        context as Activity
+        if (shouldShowRequestPermissionRationale(context, Manifest.permission.POST_NOTIFICATIONS)) {
+            // Show an explanation to the user *asynchronously* -- don't block
+            // this thread waiting for the user's response! After the user
+            // sees the explanation, try again to request the permission.
+        } else
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                requestPermissions(context, arrayOf(Manifest.permission.POST_NOTIFICATIONS), id)
+            }
+    }
+}
+
+private fun createNotificationChannel(context: Context) {
 
     val name = "Reminder"
     val descriptionText = "Reminds your of your scheduled activities"
     val importance = NotificationManager.IMPORTANCE_HIGH
-    val channel = NotificationChannel(channelId, name, importance).apply {
+    val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
         description = descriptionText
     }
 
@@ -46,7 +119,25 @@ fun createNotificationChannel(channelId: String, context: Context) {
     notificationManager.createNotificationChannel(channel)
 }
 
+
+//@Composable
+//fun ShowNotification(title: String, content: String) {
+//    val context = LocalContext.current
+//    val channelId = "wow007"
+////    val notificationId = 0
+//
+//    LaunchedEffect(Unit) {
+//        createNotificationChannel(channelId, context)
+//    }
+//
+//    val reminder = OneTimeWorkRequestBuilder<ReminderWorker>().setInitialDelay(15, TimeUnit.SECONDS)
+//        .addTag("Reminder").build()
+//
+//    WorkManager.getInstance(context).enqueue(reminder)
+//}
+
 // shows a simple notification with a tap action to show an activity
+/*
 fun showSimpleNotificationWithTapAction(
     context: Context,
     channelId: String,
@@ -98,3 +189,4 @@ fun showSimpleNotificationWithTapAction(
         notify(notificationId, builder.build())
     }
 }
+*/

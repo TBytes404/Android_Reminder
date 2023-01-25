@@ -3,6 +3,7 @@
 package com.example.reminder.ui.componets
 
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -61,39 +62,6 @@ fun CreateNoteDialog(isOpen: Boolean, onClose: () -> Unit, onCreate: (Note) -> U
 
     var note by remember { mutableStateOf("") }
 
-
-//    Time Picker Dialog
-    AnimatedVisibility(visible = showTimePicker) {
-//        TimePickerDialog(onDismissRequest = { showTimePicker = false },
-//            onTimeChange = { selectedTime = it; showTimePicker = false })
-
-        DateTimePickerDialogCustom(icon = Icons.Rounded.Schedule,
-            onClose = { showTimePicker = false }) {
-            val instantTime = LocalTime.now()
-            TimePicker(initialTime = instantTime, onTimeChange = { selectedTime = it })
-        }
-    }
-
-//    Date Picker Dialog
-    AnimatedVisibility(visible = showDatePicker) {
-//        DatePickerDialog(onDismissRequest = { showDatePicker = false },
-//            onDateChange = { selectedDate = it; showDatePicker = false })
-
-//        LaunchedEffect(datePickerState) { selectedDate = convertMillisToDate() }
-
-        DateTimePickerDialogCustom(icon = Icons.Rounded.EditCalendar,
-            onClose = { showDatePicker = false }) {
-            DatePicker(datePickerState,
-                dateValidator = { utcDateInMills ->
-                    val selected =
-                        Instant.ofEpochMilli(utcDateInMills).atZone(ZoneId.of("UTC")).toLocalDate()
-                    selected >= instantDate
-                })
-        }
-    }
-
-
-
     AnimatedVisibility(visible = isOpen) {
         var isError by remember { mutableStateOf(false) }
         AlertDialog(onDismissRequest = onClose, confirmButton = {
@@ -116,15 +84,20 @@ fun CreateNoteDialog(isOpen: Boolean, onClose: () -> Unit, onCreate: (Note) -> U
                     label = { Text("New note") }, placeholder = { Text("eg. Call him tomorrow.") },
                     leadingIcon = { Icon(Icons.Rounded.EditNote, null) },
                     trailingIcon = {
-                        AnimatedVisibility(visible = note.isNotBlank()) {
-                            IconButton(onClick = { note = "" }) { Icon(Icons.Rounded.Clear, null) }
+                        Crossfade(targetState = isError) {
+                            if (it) Icon(Icons.Rounded.Error, null)
+                            else AnimatedVisibility(visible = note.isNotBlank()) {
+                                IconButton(onClick = { note = "" }) {
+                                    Icon(Icons.Rounded.Clear, null)
+                                }
+                            }
                         }
-                        AnimatedVisibility(visible = isError) { Icon(Icons.Rounded.Error, null) }
                     },
                     supportingText = {
                         AnimatedVisibility(visible = isError) { Text("Put some text!") }
                     },
                     isError = isError, shape = MaterialTheme.shapes.large,
+                    keyboardOptions = KeyboardOptions(autoCorrect = false)
                 )
 
 
@@ -146,6 +119,39 @@ fun CreateNoteDialog(isOpen: Boolean, onClose: () -> Unit, onCreate: (Note) -> U
                     isError
                 )
 
+
+//    Time Picker Dialog
+                AnimatedVisibility(visible = showTimePicker) {
+//        TimePickerDialog(onDismissRequest = { showTimePicker = false },
+//            onTimeChange = { selectedTime = it; showTimePicker = false })
+
+                    DateTimePickerDialogCustom(icon = Icons.Rounded.Schedule,
+                        onClose = { showTimePicker = false }) {
+                        TimePicker(
+                            initialTime = LocalTime.now(),
+                            onTimeChange = { selectedTime = it })
+                    }
+                }
+
+//    Date Picker Dialog
+                AnimatedVisibility(visible = showDatePicker) {
+//        DatePickerDialog(onDismissRequest = { showDatePicker = false },
+//            onDateChange = { selectedDate = it; showDatePicker = false })
+
+//        LaunchedEffect(datePickerState) { selectedDate = convertMillisToDate() }
+
+                    DateTimePickerDialogCustom(icon = Icons.Rounded.EditCalendar,
+                        onClose = { showDatePicker = false }) {
+                        DatePicker(datePickerState,
+                            dateValidator = { utcDateInMills ->
+                                val selected =
+                                    Instant.ofEpochMilli(utcDateInMills).atZone(ZoneId.of("UTC"))
+                                        .toLocalDate()
+                                selected >= instantDate
+                            })
+                    }
+                }
+
             }
         }, properties = DialogProperties(usePlatformDefaultWidth = false))
     }
@@ -153,7 +159,7 @@ fun CreateNoteDialog(isOpen: Boolean, onClose: () -> Unit, onCreate: (Note) -> U
 
 
 @Composable
-fun DateTimePickerDialogCustom(
+private fun DateTimePickerDialogCustom(
     icon: ImageVector, onClose: () -> Unit, content: @Composable () -> Unit
 ) {
     AlertDialog(
@@ -167,7 +173,7 @@ fun DateTimePickerDialogCustom(
 
 
 @Composable
-fun OutlinedDialogButton(
+private fun OutlinedDialogButton(
     key: String,
     value: String,
     onValueChange: (String) -> Unit,
@@ -183,7 +189,11 @@ fun OutlinedDialogButton(
         enabled = false, readOnly = true,
         placeholder = { Text("eg. $value") },
         leadingIcon = { Icon(icon, null) },
-        trailingIcon = { Icon(Icons.Rounded.ExpandMore, null) },
+        trailingIcon = {
+            AnimatedVisibility(visible = isError) {
+                Icon(Icons.Rounded.ExpandMore, null)
+            }
+        },
         supportingText = {
             AnimatedVisibility(visible = isError) { Text("Select a ${key.lowercase()}!") }
         },

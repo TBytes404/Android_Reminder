@@ -1,14 +1,9 @@
-@file:OptIn(
-    ExperimentalMaterial3Api::class,
-    ExperimentalFoundationApi::class,
-    ExperimentalAnimationApi::class
-)
+@file:OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 
 package com.example.reminder.ui.componets
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
-import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
@@ -25,14 +20,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import com.example.reminder.data.Note
 import com.example.reminder.ui.NotesViewModel
 import com.example.reminder.ui.theme.ReminderTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalDateTime
 import java.util.*
 import kotlin.time.Duration.Companion.seconds
 
@@ -45,6 +44,19 @@ fun capitalize(word: String?): String {
     } ?: "Master"
 }
 
+/*
+@Preview(showBackground = true)
+@Composable
+fun NoteItemPreview() {
+    MaterialTheme {
+        NoteItem(Note("HELLO", LocalDateTime.of(2023, 10, 10, 10, 10))) {
+            IconButton(onClick = { }) {
+                Icon(Icons.Rounded.PhoneInTalk, "call")
+            }
+        }
+    }
+}
+*/
 
 @Composable
 fun NoteItem(note: Note, modifier: Modifier = Modifier, action: @Composable () -> Unit) {
@@ -55,28 +67,37 @@ fun NoteItem(note: Note, modifier: Modifier = Modifier, action: @Composable () -
         shadowElevation = 1.dp
     ) {
         Column {
-            ListItem({
-                Surface(
-                    Modifier
-                        .animateContentSize()
-                        .padding(1.dp)
-                ) {
-                    Text(
-                        note.note, maxLines = if (isExpanded) Int.MAX_VALUE else 1
-                    )
-                }
-            }, overlineText = { Text(note.formattedTime()) }, leadingContent = {
-                Surface(
-                    Modifier.size(40.dp), CircleShape, MaterialTheme.colorScheme.primaryContainer
-                ) {
-                    Icon(
-                        Icons.Rounded.Person,
-                        null,
-                        Modifier.padding(4.dp),
-                        MaterialTheme.colorScheme.onPrimaryContainer
-                    )
-                }
-            }, trailingContent = action)
+            ListItem(
+                headlineText = {
+                    Surface(
+                        Modifier
+                            .animateContentSize()
+                            .padding(1.dp)
+                    ) {
+                        Text(
+                            note.note, maxLines = if (isExpanded) Int.MAX_VALUE else 1,
+                            textDecoration = if (note.dateTime < LocalDateTime.now()) TextDecoration.LineThrough else TextDecoration.None
+                        )
+                    }
+                },
+                modifier = Modifier.alpha(if (note.dateTime < LocalDateTime.now()) 0.5f else 1.0f),
+                overlineText = { Text(note.formattedTime()) },
+                leadingContent = {
+                    Surface(
+                        Modifier.size(40.dp),
+                        CircleShape,
+                        MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        Icon(
+                            Icons.Rounded.Person,
+                            null,
+                            Modifier.padding(4.dp),
+                            MaterialTheme.colorScheme.onPrimaryContainer
+                        )
+                    }
+                },
+                trailingContent = action,
+            )
             Divider(color = MaterialTheme.colorScheme.surfaceVariant)
         }
     }
@@ -107,10 +128,10 @@ fun WelcomeDialog(
             },
             dismissButton = { TextButton(onClick = onClose) { Text("Dismiss") } },
             icon = { Icon(Icons.Rounded.Badge, null) },
-            title = { Text("Welcome ${capitalize(accountName)}!") },
+            title = { Text("Welcome ${capitalize(accountName)}") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                    Text("I am your Personal Call Assistant!! 👩🏻‍⚕️️")
+                    Text("I am your Personal Call Assistant 👩🏻‍⚕️️")
 
                     OutlinedTextField(
                         value = name,
@@ -146,7 +167,7 @@ fun WelcomeDialog(
 //        LaunchedEffect(accountName) { if(accountName.isNotBlank()) done = true }
 
         AlertDialog(onDismissRequest = { done = false },
-            confirmButton = { TextButton({ done = false }) { Text("Ok") } },
+            confirmButton = { Button({ done = false }) { Text("Ok") } },
             icon = { Icon(Icons.Rounded.SupportAgent, null) },
             title = {
                 Text(
@@ -313,6 +334,8 @@ fun NotesList(
 
 @Composable
 fun NotesScreen(notesViewModel: NotesViewModel) {
+    val context = LocalContext.current
+
     val accountUiState by notesViewModel.accountUiState.collectAsState()
     val notesUiState by notesViewModel.notesUiState.collectAsState()
 
@@ -381,7 +404,10 @@ fun NotesScreen(notesViewModel: NotesViewModel) {
 
                 CreateNoteDialog(isOpen = openCreateNoteDialog, onClose = {
                     openCreateNoteDialog = false
-                }) { notesViewModel.createNote(it) }
+                }) {
+                    notesViewModel.createNote(it)
+                    createWorkRequest(context, it)
+                }
 
                 DeleteNoteDialog(
                     isOpen = openDeleteNoteDialog,
@@ -393,7 +419,6 @@ fun NotesScreen(notesViewModel: NotesViewModel) {
 
             }
         }
-        ShowNotification("Hello", "Coca")
     }
 }
 
