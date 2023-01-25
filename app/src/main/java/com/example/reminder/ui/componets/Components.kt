@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -123,8 +124,8 @@ fun WelcomeDialog(
                             }
                         },
                         placeholder = { Text("Nickname") },
-                        singleLine = true,
-                        shape = MaterialTheme.shapes.large,
+                        keyboardOptions = KeyboardOptions(autoCorrect = false),
+                        singleLine = true, shape = MaterialTheme.shapes.large,
                     )
                 }
             },
@@ -214,11 +215,14 @@ fun TopBar(
     onClickDelete: () -> Unit,
 ) {
     var openWelcomeDialog by remember { mutableStateOf(false) }
+    var welcomedBefore by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        delay(1.seconds)
-        openWelcomeDialog = accountName == null
-    }
+    if (!welcomedBefore)
+        LaunchedEffect(accountName) {
+            delay(1.seconds)
+            openWelcomeDialog = accountName == null
+            welcomedBefore = true
+        }
 
     LargeTopAppBar(
         title = { Text("Hello ${capitalize(accountName)}!") },
@@ -386,8 +390,10 @@ fun NotesScreen(notesViewModel: NotesViewModel) {
                         openDeleteNoteDialog = false
                         selectionMode = false
                     }) { notesViewModel.removeNotes(ids = selectedNotes.toIntArray()) }
+
             }
         }
+        ShowNotification("Hello", "Coca")
     }
 }
 

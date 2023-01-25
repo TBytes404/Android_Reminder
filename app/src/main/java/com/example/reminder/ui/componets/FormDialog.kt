@@ -7,6 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
@@ -186,6 +187,7 @@ fun OutlinedDialogButton(
         supportingText = {
             AnimatedVisibility(visible = isError) { Text("Select a ${key.lowercase()}!") }
         },
+        keyboardOptions = KeyboardOptions(autoCorrect = false),
         isError = isError, singleLine = true,
         shape = MaterialTheme.shapes.large,
         colors = TextFieldDefaults.outlinedTextFieldColors(
