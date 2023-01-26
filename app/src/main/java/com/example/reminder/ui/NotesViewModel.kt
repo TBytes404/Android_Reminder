@@ -35,17 +35,15 @@ class NotesViewModel(
 
     val accountUiState: StateFlow<AccountUiState> =
         accountRepository.account.map { AccountUiState(it.name, it.prefersDarkTheme) }.stateIn(
-                viewModelScope, SharingStarted.WhileSubscribed(TIMEOUT_MILLIS), AccountUiState()
-            )
+            viewModelScope, SharingStarted.WhileSubscribed(TIMEOUT_MILLIS), AccountUiState()
+        )
 
 
-    fun saveAccountName(name: String?) {
+    fun saveAccountName(name: String?) =
         viewModelScope.launch { accountRepository.saveAccountName(name) }
-    }
 
-    fun saveThemePreference(prefersDarkTheme: Boolean) {
+    fun saveThemePreference(prefersDarkTheme: Boolean) =
         viewModelScope.launch { accountRepository.saveThemePreference(prefersDarkTheme) }
-    }
 
 
 //    val allNotes: LiveData<List<Note>> = notesRepository.allNotes.asLiveData()

@@ -8,7 +8,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.core.app.ActivityCompat.*
-import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationCompat.*
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.*
 import com.example.reminder.R
@@ -56,31 +56,20 @@ private fun createNotification(context: Context, note: String, id: Int) {
     val defaultPendingIntent: PendingIntent =
         PendingIntent.getActivity(context, id, defaultIntent, PendingIntent.FLAG_IMMUTABLE)
 
-//    val dismissIntent = Intent(context, MainActivity::class.java).apply {
-//        flags = Intent.
-//    }
+    val fullScreenIntent = Intent(context, MainActivity::class.java)
+    val fullScreenPendingIntent = PendingIntent.getActivity(
+        context, id, fullScreenIntent,
+        PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
 
-//    val dismissPendingIntent: PendingIntent =
-//        PendingIntent.getActivity(
-//            context, id, defaultIntent,
-//            PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
-//        )
-
-//    val snoozeIntent = Intent(this, MainActivity::class.java).apply {
-//        action = ACTION_SNOOZE
-//        putExtra(EXTRA_NOTIFICATION_ID, 0)
-//    }
-//    val snoozePendingIntent: PendingIntent =
-//        PendingIntent.getBroadcast(this, 0, snoozeIntent, 0)
-
-    val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-        .setSmallIcon(R.drawable.ic_launcher_foreground)
-        .setContentTitle(note).setAutoCancel(true)
-        .setPriority(NotificationCompat.PRIORITY_MAX)
-        .setContentIntent(defaultPendingIntent).setOngoing(true)
-        .setDefaults(Notification.DEFAULT_ALL)
+    val builder = Builder(context, CHANNEL_ID)
+        .setSmallIcon(R.drawable.ic_launcher_foreground).setContentTitle(note).setAutoCancel(true)
+        .setPriority(PRIORITY_MAX).setContentIntent(defaultPendingIntent)
+        .setDefaults(Notification.DEFAULT_ALL).setFullScreenIntent(fullScreenPendingIntent, true)
+        .setVisibility(VISIBILITY_PUBLIC).setCategory(CATEGORY_REMINDER)
+        .addAction(R.drawable.ic_launcher_foreground, "Dismiss", defaultPendingIntent)
+        .addAction(R.drawable.ic_launcher_foreground, "Snooze", defaultPendingIntent)
         .addAction(R.drawable.ic_launcher_foreground, "Call", defaultPendingIntent)
-//        .addAction(R.drawable.ic_launcher_foreground, "Snooze", snoozePendingIntent)
 
     requestNotificationPermission(context, id)
 

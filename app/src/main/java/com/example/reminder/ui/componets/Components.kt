@@ -61,6 +61,8 @@ fun NoteItemPreview() {
 @Composable
 fun NoteItem(note: Note, modifier: Modifier = Modifier, action: @Composable () -> Unit) {
     var isExpanded by remember { mutableStateOf(false) }
+    val disabled = note.dateTime < LocalDateTime.now()
+
     Surface(
         modifier = modifier.clickable { isExpanded = !isExpanded },
         shape = MaterialTheme.shapes.large,
@@ -76,11 +78,11 @@ fun NoteItem(note: Note, modifier: Modifier = Modifier, action: @Composable () -
                     ) {
                         Text(
                             note.note, maxLines = if (isExpanded) Int.MAX_VALUE else 1,
-                            textDecoration = if (note.dateTime < LocalDateTime.now()) TextDecoration.LineThrough else TextDecoration.None
+                            textDecoration = if (disabled) TextDecoration.LineThrough else TextDecoration.None
                         )
                     }
                 },
-                modifier = Modifier.alpha(if (note.dateTime < LocalDateTime.now()) 0.5f else 1.0f),
+                modifier = Modifier.alpha(if (disabled) 0.5f else 1.0f),
                 overlineText = { Text(note.formattedTime()) },
                 leadingContent = {
                     Surface(
@@ -246,7 +248,7 @@ fun TopBar(
         }
 
     LargeTopAppBar(
-        title = { Text("Hello ${capitalize(accountName)}!") },
+        title = { Text("Hello ${capitalize(accountName)}") },
         colors = TopAppBarDefaults.largeTopAppBarColors(
             MaterialTheme.colorScheme.primaryContainer
         ),
