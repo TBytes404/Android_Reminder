@@ -26,13 +26,17 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
+import androidx.core.app.NotificationManagerCompat
+import androidx.work.WorkManager
 import com.example.reminder.data.Note
 import com.example.reminder.ui.NotesViewModel
 import com.example.reminder.ui.theme.ReminderTheme
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDateTime
 import java.util.*
+import kotlin.coroutines.EmptyCoroutineContext
 import kotlin.time.Duration.Companion.seconds
 
 
@@ -61,7 +65,7 @@ fun NoteItemPreview() {
 @Composable
 fun NoteItem(note: Note, modifier: Modifier = Modifier, action: @Composable () -> Unit) {
     var isExpanded by remember { mutableStateOf(false) }
-    val disabled = note.dateTime < LocalDateTime.now()
+    val disabled = note.disabled || note.dateTime < LocalDateTime.now()
 
     Surface(
         modifier = modifier.clickable { isExpanded = !isExpanded },
@@ -77,7 +81,8 @@ fun NoteItem(note: Note, modifier: Modifier = Modifier, action: @Composable () -
                             .padding(1.dp)
                     ) {
                         Text(
-                            note.note, maxLines = if (isExpanded) Int.MAX_VALUE else 1,
+                            note.note,
+                            maxLines = if (isExpanded) Int.MAX_VALUE else 1,
                             textDecoration = if (disabled) TextDecoration.LineThrough else TextDecoration.None
                         )
                     }
@@ -240,12 +245,11 @@ fun TopBar(
     var openWelcomeDialog by remember { mutableStateOf(false) }
     var welcomedBefore by remember { mutableStateOf(false) }
 
-    if (!welcomedBefore)
-        LaunchedEffect(accountName) {
-            delay(1.seconds)
-            openWelcomeDialog = accountName == null
-            welcomedBefore = true
-        }
+    if (!welcomedBefore) LaunchedEffect(accountName) {
+        delay(1.seconds)
+        openWelcomeDialog = accountName == null
+        welcomedBefore = true
+    }
 
     LargeTopAppBar(
         title = { Text("Hello ${capitalize(accountName)}") },
@@ -295,13 +299,11 @@ fun NoteActionFab(
 fun NotesList(
     notes: List<Note>,
     listState: LazyListState,
-    snackBarHostState: SnackbarHostState,
     selectionMode: Boolean,
+    disable: (Int) -> Unit,
     isChecked: (id: Int) -> Boolean,
     onChecked: (Int, Boolean) -> Unit,
 ) {
-    val scope = rememberCoroutineScope()
-
     LazyColumn(state = listState, modifier = Modifier.animateContentSize()) {
         item { Spacer(Modifier.height(8.dp)) }
         items(notes, key = { it.id }) { note ->
@@ -319,13 +321,10 @@ fun NotesList(
                             onChecked(note.id, it)
                         })
                     } else {
-                        IconButton(onClick = {
-                            scope.launch {
-                                snackBarHostState.showSnackbar(
-                                    "Can't Call Yet!", "Ok", true, SnackbarDuration.Short
-                                )
-                            }
-                        }) { Icon(Icons.Rounded.PhoneInTalk, "call") }
+                        if (note.disabled) Icon(Icons.Rounded.DoDisturb, null)
+                        else IconButton(onClick = {
+                            CoroutineScope(EmptyCoroutineContext).launch { disable(note.id) }
+                        }) { Icon(Icons.Rounded.DoNotDisturbOn, "disable reminder") }
                     }
                 }
             }
@@ -354,6 +353,8 @@ fun NotesScreen(notesViewModel: NotesViewModel) {
     val expandedFab by remember { derivedStateOf { listState.firstVisibleItemIndex == 0 } }
 
     val selectedNotes = remember { mutableListOf<Int>() }
+    val scope = rememberCoroutineScope()
+    var workId = UUID.randomUUID()
 
     ReminderTheme(darkTheme = accountUiState.prefersDarkTheme) {
         // A surface container using the 'background' color from the theme
@@ -384,21 +385,40 @@ fun NotesScreen(notesViewModel: NotesViewModel) {
                 color = MaterialTheme.colorScheme.background
             ) {
                 AnimatedVisibility(visible = notesUiState.notes.isEmpty()) {
-                    Box(
-                        modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center
+                    Column(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
                     ) {
+                        Icon(
+                            Icons.Rounded.HourglassEmpty,
+                            null,
+                            Modifier.size(32.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
                         Text(
-                            text = "Empty Reminder List!",
+                            text = "Empty Reminder List",
                             color = MaterialTheme.colorScheme.outline,
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }
                 }
+
                 AnimatedVisibility(visible = notesUiState.notes.isNotEmpty()) {
                     NotesList(notes = notesUiState.notes.reversed(),
                         listState,
-                        snackBarHostState,
                         selectionMode,
+                        disable = {
+                            notesViewModel.disableReminder(it)
+                            WorkManager.getInstance(context).cancelWorkById(workId)
+                            NotificationManagerCompat.from(context).cancel(it)
+                            scope.launch {
+                                snackBarHostState.showSnackbar(
+                                    "Reminder Disabled!", "Ok", true, SnackbarDuration.Short
+                                )
+                            }
+                        },
                         isChecked = { selectedNotes.contains(it) }) { id, checked ->
                         if (checked) selectedNotes.add(id) else selectedNotes.remove(id)
                     }
@@ -408,7 +428,13 @@ fun NotesScreen(notesViewModel: NotesViewModel) {
                     openCreateNoteDialog = false
                 }) {
                     notesViewModel.createNote(it)
-                    createWorkRequest(context, it)
+                    workId = createWorkRequest(context, it)
+                    scope.launch {
+                        val delay = it.delay.seconds.toString()
+                        snackBarHostState.showSnackbar(
+                            "Reminder set to $delay", "Ok", true, SnackbarDuration.Long
+                        )
+                    }
                 }
 
                 DeleteNoteDialog(
@@ -417,7 +443,10 @@ fun NotesScreen(notesViewModel: NotesViewModel) {
                     onClose = {
                         openDeleteNoteDialog = false
                         selectionMode = false
-                    }) { notesViewModel.removeNotes(ids = selectedNotes.toIntArray()) }
+                    }) {
+                    notesViewModel.removeNotes(ids = selectedNotes.toIntArray())
+                    selectedNotes.forEach { NotificationManagerCompat.from(context).cancel(it) }
+                }
 
             }
         }
@@ -428,5 +457,5 @@ fun NotesScreen(notesViewModel: NotesViewModel) {
 //@Preview
 //@Composable
 //fun DefaultPreview() {
-//    NotesView()
+//
 //}

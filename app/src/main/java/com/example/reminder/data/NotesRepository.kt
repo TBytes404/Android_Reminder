@@ -1,10 +1,14 @@
 package com.example.reminder.data
 
 import androidx.annotation.WorkerThread
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.launch
+import kotlin.coroutines.EmptyCoroutineContext
 
 class NotesRepository(private val noteDao: NoteDao) {
 
-    val allNotes = noteDao.getAll()
+    fun allNotes(): Flow<List<Note>> = noteDao.getAll()
 
     @WorkerThread
     suspend fun addNote(note: Note) {
@@ -12,10 +16,25 @@ class NotesRepository(private val noteDao: NoteDao) {
     }
 
     @WorkerThread
+    fun getNotes(vararg ids: Int): List<Note> = noteDao.getById(ids = ids)
+
+    @WorkerThread
     suspend fun removeNotes(vararg ids: Int) {
         noteDao.deleteById(ids = ids)
     }
 
+    @WorkerThread
+    suspend fun updateNotes(vararg notes: Note) {
+        noteDao.update(notes = notes)
+    }
+
+    fun disableReminders(vararg ids: Int) {
+        CoroutineScope(EmptyCoroutineContext).launch {
+            val notes = getNotes(ids = ids)
+            notes.forEach { it.disabled = true }
+            updateNotes(notes = notes.toTypedArray())
+        }
+    }
 
 //    fun getAllNotes(): Flow<List<Note>> = flow { emit(NotesDataProvider.notes) }
 

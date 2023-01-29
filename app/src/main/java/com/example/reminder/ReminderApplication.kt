@@ -1,4 +1,4 @@
-package com.example.reminder.ui
+package com.example.reminder
 
 import android.app.Application
 import com.example.reminder.data.AccountRepository

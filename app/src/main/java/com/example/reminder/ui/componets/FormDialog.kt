@@ -34,8 +34,11 @@ import java.time.format.DateTimeFormatter
 //}
 
 @Composable
-fun CreateNoteDialog(isOpen: Boolean, onClose: () -> Unit, onCreate: (Note) -> Unit) {
-
+fun CreateNoteDialog(
+    isOpen: Boolean,
+    onClose: () -> Unit,
+    onCreate: (Note) -> Unit
+) {
     var showTimePicker by remember { mutableStateOf(false) }
     var selectedTime by remember { mutableStateOf(LocalTime.now()) }
     val timeFormatter = DateTimeFormatter.ofPattern("hh:mm a")
@@ -65,10 +68,16 @@ fun CreateNoteDialog(isOpen: Boolean, onClose: () -> Unit, onCreate: (Note) -> U
     AnimatedVisibility(visible = isOpen) {
         var isError by remember { mutableStateOf(false) }
         AlertDialog(onDismissRequest = onClose, confirmButton = {
-            Button({
+            Button(onClick = {
                 if (note.isBlank()) isError = true else {
                     isError = false
-                    onCreate(Note(note.trim(), LocalDateTime.of(selectedDate(), selectedTime)))
+
+//                    val id = UUID.fromString("${p0.replace("[^a-zA-Z0-9]", "")}${p1.nano}")
+                    val p0 = note.trim()
+                    val p1 = LocalDateTime.of(selectedDate(), selectedTime)
+                    val id = LocalDateTime.now().nano
+                    onCreate(Note(id, p0, p1))
+
                     note = ""
                     onClose()
                 }

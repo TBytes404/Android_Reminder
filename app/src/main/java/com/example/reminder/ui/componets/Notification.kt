@@ -1,21 +1,17 @@
 package com.example.reminder.ui.componets
 
-import android.Manifest
 import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.os.Build
 import androidx.core.app.ActivityCompat.*
 import androidx.core.app.NotificationCompat.*
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.*
+import com.example.reminder.*
 import com.example.reminder.R
 import com.example.reminder.data.Note
-import com.example.reminder.ui.MainActivity
-import java.time.LocalDateTime
-import java.time.ZoneOffset
+import java.util.*
 import java.util.concurrent.TimeUnit
 
 
@@ -34,16 +30,17 @@ class ReminderWorker(private val context: Context, workerParameters: WorkerParam
     }
 }
 
-fun createWorkRequest(context: Context, note: Note) {
-    val boomDelay = note.dateTime.toInstant(ZoneOffset.UTC).epochSecond -
-            LocalDateTime.now().toInstant(ZoneOffset.UTC).epochSecond
+fun createWorkRequest(context: Context, note: Note): UUID {
+//    val boomDelay = note.dateTime.toInstant(ZoneOffset.UTC).epochSecond -
+//            LocalDateTime.now().toInstant(ZoneOffset.UTC).epochSecond
 
     val reminder = OneTimeWorkRequestBuilder<ReminderWorker>()
-        .setInitialDelay(boomDelay, TimeUnit.SECONDS)
+        .setInitialDelay(note.delay, TimeUnit.SECONDS)
         .setInputData(workDataOf("note" to note.note, "id" to note.id))
         .addTag("Reminder").build()
 
     WorkManager.getInstance(context).enqueue(reminder)
+    return reminder.id
 }
 
 @SuppressLint("MissingPermission")
@@ -53,45 +50,36 @@ private fun createNotification(context: Context, note: String, id: Int) {
     val defaultIntent = Intent(context, MainActivity::class.java).apply {
         flags = Intent.FLAG_ACTIVITY_CLEAR_TASK or Intent.FLAG_ACTIVITY_NEW_TASK
     }
-    val defaultPendingIntent: PendingIntent =
-        PendingIntent.getActivity(context, id, defaultIntent, PendingIntent.FLAG_IMMUTABLE)
+    val defaultPendingIntent: PendingIntent = PendingIntent.getActivity(
+        context, id, defaultIntent, PendingIntent.FLAG_IMMUTABLE
+    )
 
-    val fullScreenIntent = Intent(context, MainActivity::class.java)
+    val fullScreenIntent = Intent(context, NotificationActivity::class.java)
     val fullScreenPendingIntent = PendingIntent.getActivity(
         context, id, fullScreenIntent,
         PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
     )
 
+    val dismissIntent =
+        Intent(context, NotificationReceiver::class.java).apply {
+            action = ACTION_DISMISS
+            putExtra(EXTRA_NOTIFICATION_ID, id)
+        }
+    val dismissPendingIntent: PendingIntent = PendingIntent.getBroadcast(
+        context, id, dismissIntent,
+        PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+    )
+
     val builder = Builder(context, CHANNEL_ID)
         .setSmallIcon(R.drawable.ic_launcher_foreground).setContentTitle(note).setAutoCancel(true)
-        .setPriority(PRIORITY_MAX).setContentIntent(defaultPendingIntent)
+        .setPriority(PRIORITY_MAX).setContentIntent(defaultPendingIntent).setOngoing(true)
         .setDefaults(Notification.DEFAULT_ALL).setFullScreenIntent(fullScreenPendingIntent, true)
         .setVisibility(VISIBILITY_PUBLIC).setCategory(CATEGORY_REMINDER)
-        .addAction(R.drawable.ic_launcher_foreground, "Dismiss", defaultPendingIntent)
-        .addAction(R.drawable.ic_launcher_foreground, "Snooze", defaultPendingIntent)
-        .addAction(R.drawable.ic_launcher_foreground, "Call", defaultPendingIntent)
-
-    requestNotificationPermission(context, id)
+        .addAction(R.drawable.ic_launcher_foreground, ACTION_DISMISS, dismissPendingIntent)
+//        .addAction(R.drawable.ic_launcher_foreground, ACTION_SNOOZE, defaultPendingIntent)
+//        .addAction(R.drawable.ic_launcher_foreground, ACTION_CALL, defaultPendingIntent)
 
     NotificationManagerCompat.from(context).notify(id, builder.build())
-}
-
-private fun requestNotificationPermission(context: Context, id: Int) {
-    if (checkSelfPermission(
-            context,
-            Manifest.permission.POST_NOTIFICATIONS
-        ) != PackageManager.PERMISSION_GRANTED
-    ) {
-        context as Activity
-        if (shouldShowRequestPermissionRationale(context, Manifest.permission.POST_NOTIFICATIONS)) {
-            // Show an explanation to the user *asynchronously* -- don't block
-            // this thread waiting for the user's response! After the user
-            // sees the explanation, try again to request the permission.
-        } else
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                requestPermissions(context, arrayOf(Manifest.permission.POST_NOTIFICATIONS), id)
-            }
-    }
 }
 
 private fun createNotificationChannel(context: Context) {
@@ -109,24 +97,25 @@ private fun createNotificationChannel(context: Context) {
 }
 
 
-//@Composable
-//fun ShowNotification(title: String, content: String) {
-//    val context = LocalContext.current
-//    val channelId = "wow007"
-////    val notificationId = 0
-//
-//    LaunchedEffect(Unit) {
-//        createNotificationChannel(channelId, context)
-//    }
-//
-//    val reminder = OneTimeWorkRequestBuilder<ReminderWorker>().setInitialDelay(15, TimeUnit.SECONDS)
-//        .addTag("Reminder").build()
-//
-//    WorkManager.getInstance(context).enqueue(reminder)
-//}
+/*
+@Composable
+fun ShowNotification(title: String, content: String) {
+    val context = LocalContext.current
+    val channelId = "wow007"
+//    val notificationId = 0
+
+    LaunchedEffect(Unit) {
+        createNotificationChannel(channelId, context)
+    }
+
+    val reminder = OneTimeWorkRequestBuilder<ReminderWorker>().setInitialDelay(15, TimeUnit.SECONDS)
+        .addTag("Reminder").build()
+
+    WorkManager.getInstance(context).enqueue(reminder)
+}
 
 // shows a simple notification with a tap action to show an activity
-/*
+
 fun showSimpleNotificationWithTapAction(
     context: Context,
     channelId: String,

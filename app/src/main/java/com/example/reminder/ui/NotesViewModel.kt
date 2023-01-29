@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.AP
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.initializer
 import androidx.lifecycle.viewmodel.viewModelFactory
+import com.example.reminder.ReminderApplication
 import com.example.reminder.data.AccountRepository
 import com.example.reminder.data.Note
 import com.example.reminder.data.NotesRepository
@@ -30,7 +31,7 @@ class NotesViewModel(
     private val notesRepository: NotesRepository,
 ) : ViewModel() {
 
-    val notesUiState: StateFlow<NotesUiState> = notesRepository.allNotes.map { NotesUiState(it) }
+    val notesUiState: StateFlow<NotesUiState> = notesRepository.allNotes().map { NotesUiState(it) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(TIMEOUT_MILLIS), NotesUiState())
 
     val accountUiState: StateFlow<AccountUiState> =
@@ -52,6 +53,9 @@ class NotesViewModel(
 
     fun removeNotes(vararg ids: Int) =
         viewModelScope.launch { notesRepository.removeNotes(ids = ids) }
+
+    fun disableReminder(id: Int) =
+        viewModelScope.launch { notesRepository.disableReminders(id) }
 
 
     companion object {
