@@ -2,7 +2,6 @@ package com.example.reminder.data
 
 import androidx.room.*
 import kotlinx.coroutines.flow.Flow
-import java.util.*
 
 @Dao
 interface NoteDao {

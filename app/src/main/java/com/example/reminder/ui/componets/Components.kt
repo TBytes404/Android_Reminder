@@ -17,12 +17,16 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
@@ -74,7 +78,7 @@ fun NoteItem(note: Note, modifier: Modifier = Modifier, action: @Composable () -
     ) {
         Column {
             ListItem(
-                headlineText = {
+                headlineContent = {
                     Surface(
                         Modifier
                             .animateContentSize()
@@ -88,7 +92,7 @@ fun NoteItem(note: Note, modifier: Modifier = Modifier, action: @Composable () -
                     }
                 },
                 modifier = Modifier.alpha(if (disabled) 0.5f else 1.0f),
-                overlineText = { Text(note.formattedTime()) },
+                overlineContent = { Text(note.formattedTime()) },
                 leadingContent = {
                     Surface(
                         Modifier.size(40.dp),
@@ -105,7 +109,11 @@ fun NoteItem(note: Note, modifier: Modifier = Modifier, action: @Composable () -
                 },
                 trailingContent = action,
             )
-            Divider(color = MaterialTheme.colorScheme.surfaceVariant)
+            HorizontalDivider(
+                Modifier,
+                DividerDefaults.Thickness,
+                color = MaterialTheme.colorScheme.surfaceVariant
+            )
         }
     }
 }
@@ -152,7 +160,7 @@ fun WelcomeDialog(
                             }
                         },
                         placeholder = { Text("Nickname") },
-                        keyboardOptions = KeyboardOptions(autoCorrect = false),
+                        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Unspecified, autoCorrectEnabled = false, keyboardType = KeyboardType.Unspecified, imeAction = ImeAction.Unspecified),
                         singleLine = true, shape = MaterialTheme.shapes.large,
                     )
                 }
@@ -307,12 +315,12 @@ fun NotesList(
     LazyColumn(state = listState, modifier = Modifier.animateContentSize()) {
         item { Spacer(Modifier.height(8.dp)) }
         items(notes, key = { it.id }) { note ->
-            NoteItem(note, modifier = Modifier.animateItemPlacement()) {
+            NoteItem(note, modifier = Modifier.animateItem()) {
                 Crossfade(
                     targetState = selectionMode,
                     modifier = Modifier
                         .animateContentSize()
-                        .animateItemPlacement()
+                        .animateItem()
                 ) { selectable ->
                     if (selectable) {
                         var checked by remember { mutableStateOf(isChecked(note.id)) }

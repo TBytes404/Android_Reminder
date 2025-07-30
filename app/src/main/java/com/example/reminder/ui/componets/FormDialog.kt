@@ -16,6 +16,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.example.reminder.data.Note
@@ -48,7 +51,15 @@ fun CreateNoteDialog(
     val datePickerState =
         rememberDatePickerState(
 //            initialSelectedDateMillis = instantDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli(),
-            yearsRange = instantDate.year..instantDate.year + 1
+            yearRange = instantDate.year..instantDate.year + 1,
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    return utcTimeMillis > System.currentTimeMillis()
+                }
+                override fun isSelectableYear(year: Int): Boolean {
+                    return year >= LocalDate.now().year
+                }
+            }
         )
 
 
@@ -106,7 +117,7 @@ fun CreateNoteDialog(
                         AnimatedVisibility(visible = isError) { Text("Put some text!") }
                     },
                     isError = isError, shape = MaterialTheme.shapes.large,
-                    keyboardOptions = KeyboardOptions(autoCorrect = false)
+                    keyboardOptions = KeyboardOptions(autoCorrectEnabled = false)
                 )
 
 
@@ -138,7 +149,9 @@ fun CreateNoteDialog(
                         onClose = { showTimePicker = false }) {
                         TimePicker(
                             initialTime = LocalTime.now(),
-                            onTimeChange = { selectedTime = it })
+                            onTimeChange = { selectedTime = it },
+                            title = { Text("Reminder") }
+                        )
                     }
                 }
 
@@ -151,13 +164,7 @@ fun CreateNoteDialog(
 
                     DateTimePickerDialogCustom(icon = Icons.Rounded.EditCalendar,
                         onClose = { showDatePicker = false }) {
-                        DatePicker(datePickerState,
-                            dateValidator = { utcDateInMills ->
-                                val selected =
-                                    Instant.ofEpochMilli(utcDateInMills).atZone(ZoneId.of("UTC"))
-                                        .toLocalDate()
-                                selected >= instantDate
-                            })
+                        DatePicker(datePickerState)
                     }
                 }
 
@@ -206,11 +213,11 @@ private fun OutlinedDialogButton(
         supportingText = {
             AnimatedVisibility(visible = isError) { Text("Select a ${key.lowercase()}!") }
         },
-        keyboardOptions = KeyboardOptions(autoCorrect = false),
+        keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Unspecified, autoCorrectEnabled = false, keyboardType = KeyboardType.Unspecified, imeAction = ImeAction.Unspecified),
         isError = isError, singleLine = true,
         shape = MaterialTheme.shapes.large,
-        colors = TextFieldDefaults.outlinedTextFieldColors(
-            disabledBorderColor = MaterialTheme.colorScheme.outline,
+        colors = TextFieldDefaults.colors(
+            disabledContainerColor = MaterialTheme.colorScheme.outline,
             disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
             disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
             disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,

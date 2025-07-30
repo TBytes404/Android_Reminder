@@ -4,7 +4,6 @@ import android.annotation.SuppressLint
 import android.app.*
 import android.content.Context
 import android.content.Intent
-import androidx.core.app.ActivityCompat.*
 import androidx.core.app.NotificationCompat.*
 import androidx.core.app.NotificationManagerCompat
 import androidx.work.*
