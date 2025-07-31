@@ -216,8 +216,8 @@ private fun OutlinedDialogButton(
         keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Unspecified, autoCorrectEnabled = false, keyboardType = KeyboardType.Unspecified, imeAction = ImeAction.Unspecified),
         isError = isError, singleLine = true,
         shape = MaterialTheme.shapes.large,
-        colors = TextFieldDefaults.colors(
-            disabledContainerColor = MaterialTheme.colorScheme.outline,
+        colors = OutlinedTextFieldDefaults.colors(
+            disabledBorderColor = MaterialTheme.colorScheme.outline,
             disabledLabelColor = MaterialTheme.colorScheme.onSurfaceVariant,
             disabledPlaceholderColor = MaterialTheme.colorScheme.onSurfaceVariant,
             disabledLeadingIconColor = MaterialTheme.colorScheme.onSurfaceVariant,

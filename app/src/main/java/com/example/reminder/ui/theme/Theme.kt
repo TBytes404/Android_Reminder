@@ -1,10 +1,15 @@
 package com.example.reminder.ui.theme
 
+import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.core.view.ViewCompat
 
 
 private val LightColorScheme = lightColorScheme(
@@ -85,6 +90,14 @@ fun ReminderTheme(
         }
         darkTheme -> DarkColorScheme
         else -> LightColorScheme
+    }
+
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        LaunchedEffect(darkTheme, colorScheme) {
+            (view.context as Activity).window.statusBarColor = colorScheme.primaryContainer.toArgb()
+            ViewCompat.getWindowInsetsController(view)?.isAppearanceLightStatusBars = darkTheme
+        }
     }
 
     MaterialTheme(
